@@ -21,27 +21,17 @@ from google.appengine.ext.webapp import util
 class HTTPError(Exception):
   """This is the base class for Exceptions that are caught by the RestfulHandler and
   converted to appropriate HTTP errors."""
+  def __init__(self, code, *args):
+    super(HTTPError, self).__init__(*args)
+    self.error_code = code
 
-class Redirect(HTTPError):
+class Redirect(Exception):
   """Raising this exception from a controller with the correct argument(s) performs
    a HTTP 302/303 redirect."""
   def __init__(self, url, permanent=False):
     super(Redirect, self).__init__()
     self.url = url
     self.permanent = permanent
-
-class ForbiddenError(HTTPError):
-  """Raising this exception from a controller returns a HTTP 403 Forbidden error."""
-  def __init__(self, *args):
-    super(ForbiddenError, self).__init__(*args)
-    self.error_code = 403
-  
-
-class NotFound(HTTPError):
-  """Raising this exception from a controller returns a HTTP 404 File Not Found error."""
-  def __init__(self, *args):
-    super(NotFound, self).__init__(*args)
-    self.error_code = 404
 
 class Controller(object):
   """This is the Controller class that all controller should inherit from."""
@@ -72,7 +62,7 @@ class Controller(object):
         self.logout_url = users.create_logout_url(logout_url)
         return True
       else:
-        raise ForbiddenError(current_user.email())
+        raise HTTPError(403, current_user.email())
     else:
       raise Redirect(users.create_login_url(self._request.url))
 
@@ -104,7 +94,7 @@ class RestfulHandler(webapp.RequestHandler):
           template.render("views/%s/%s.html" % (controller_name, action_name),
           self.controller.__dict__))
     except ImportError:
-      raise NotFound()
+      raise HTTPError(404)
 
 class CollectionHandler(RestfulHandler):
   def get(self, controller):
