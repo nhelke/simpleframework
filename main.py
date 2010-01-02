@@ -91,7 +91,7 @@ class RestfulHandler(webapp.RequestHandler):
                                 controller_name.title())(self.request)
       getattr(self.controller, action_name)(*args)
       self.response.out.write( \
-          template.render("views/%s/%s.html" % (controller_name, action_name),
+          template.render("../views/%s/%s.html" % (controller_name, action_name),
           self.controller.__dict__))
     except ImportError:
       raise HTTPError(404)
