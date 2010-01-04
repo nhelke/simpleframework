@@ -21,3 +21,4 @@ The plan
 * Write generator script to help creating controllers and views
 * Better authorization (@authorize)
 * Add search support (Bill Katz?)
+* Django 1.0 templates, perhaps also view helpers

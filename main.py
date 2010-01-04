@@ -18,61 +18,17 @@
 from google.appengine.ext import webapp
 from google.appengine.ext.webapp import util
 
-class HTTPError(Exception):
-  """This is the base class for Exceptions that are caught by the RestfulHandler and
-  converted to appropriate HTTP errors."""
-  def __init__(self, code, *args):
-    super(HTTPError, self).__init__(*args)
-    self.error_code = code
-
-class Redirect(Exception):
-  """Raising this exception from a controller with the correct argument(s) performs
-   a HTTP 302/303 redirect."""
-  def __init__(self, url, permanent=False):
-    super(Redirect, self).__init__()
-    self.url = url
-    self.permanent = permanent
-
-class Controller(object):
-  """This is the Controller class that all controller should inherit from."""
-  def __init__(self, request):
-    super(Controller, self).__init__()
-    self._request = request
-
-  def index(self):
-    pass
-  def show(self):
-    pass
-  def new(self):
-    pass
-  def create(self):
-    pass
-  def edit(self):
-    pass
-  def update(self):
-    pass
-  def destory(self):
-    pass
-
-  def authorize(self, authorized_emails, logout_url="/"):
-    from google.appengine.api import users
-    current_user = users.get_current_user()
-    if current_user:
-      if users.is_current_user_admin() or current_user.email() in authorized_emails:
-        self.logout_url = users.create_logout_url(logout_url)
-        return True
-      else:
-        raise HTTPError(403, current_user.email())
-    else:
-      raise Redirect(users.create_login_url(self._request.url))
+import framework
 
 class RestfulHandler(webapp.RequestHandler):
   def handle_exception(self, exception, debug_mode):
     """Better handles various exceptions and sets a more appropriate HTTP status."""
-    if isinstance(exception, Redirect):
+    if isinstance(exception, framework.Redirect):
       self.redirect(exception.url, exception.permanent)
-    elif isinstance(exception, HTTPError) and not debug_mode:
+    elif isinstance(exception, framework.HTTPError) and not debug_mode:
       self.error(exception.error_code)
+    elif isinstance(exception, ImportError) and not debug_mode:
+      self.error(404)
     else:
       super(RestfulHandler, self).handle_exception(exception, debug_mode)
   
@@ -83,18 +39,16 @@ class RestfulHandler(webapp.RequestHandler):
     enables simple mapping of new and create to edit and update respectfully in the
     controller"""
     from google.appengine.ext.webapp import template
-    try:
-      controller_path = "controllers.%s" % controller_name.lower()
-      __import__(controller_path)
-      import sys
-      self.controller = getattr(sys.modules[controller_path],
-                                controller_name.title())(self.request)
-      getattr(self.controller, action_name)(*args)
-      self.response.out.write( \
-          template.render("../views/%s/%s.html" % (controller_name, action_name),
-          self.controller.__dict__))
-    except ImportError:
-      raise HTTPError(404)
+    controller_path = "controllers.%s" % controller_name.lower()
+    __import__(controller_path)
+    import sys
+    self.controller = getattr(sys.modules[controller_path],
+                              controller_name.title())(self.request)
+    getattr(self.controller, action_name)(*args)
+    # TODO Detect if the app is running in debug mode and render view in debug as well
+    self.response.out.write( \
+        template.render("../views/%s/%s.html" % (controller_name, action_name),
+        self.controller.__dict__))
 
 class CollectionHandler(RestfulHandler):
   def get(self, controller):
