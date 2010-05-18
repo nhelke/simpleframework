@@ -33,7 +33,7 @@ class RestfulHandler(webapp.RequestHandler):
       super(RestfulHandler, self).handle_exception(exception, debug_mode)
   
   def render(self, controller_name, action_name, *args):
-    """This method starts the controller with the right action and the renders the right
+    """This method starts the controller with the right action and renders the right
     template with a dict of the data values of the controller.
     If the action new and there is no new template, the edit template is rendered instead. This
     enables simple mapping of new and create to edit and update respectfully in the
@@ -80,15 +80,18 @@ class MemberHandler(RestfulHandler):
     """Destroy object"""
     self.render(controller, "destroy")
 
+def application():
+  """The application is in its own function to enable testing."""
+  webapp.WSGIApplication([
+                          ('/(.+)/(.+)/?', MemberHandler),
+                          ('/(.+)/?', CollectionHandler),
+                          ],
+                          debug=debug)
+
 def main():
   import os
   debug = os.environ["SERVER_SOFTWARE"].startswith("Development")
-  application = webapp.WSGIApplication([
-                                        ('/(.+)/(.+)/?', MemberHandler),
-                                        ('/(.+)/?', CollectionHandler),
-                                       ],
-                                       debug=debug)
-  util.run_wsgi_app(application)
+  util.run_wsgi_app(application())
 
 if __name__ == '__main__':
   main()
